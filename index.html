@@ -127,8 +127,9 @@
     }
     .logo img {
       display: block;
-      height: clamp(28px, 5.5vw, 36px);
+      height: clamp(32px, 5vw, 40px);
       width: auto;
+      object-fit: contain;
     }
     .progress-wrap {
       flex: 1;
@@ -639,7 +640,7 @@
   <section class="screen active" id="screen-idle" aria-label="Start">
     <div class="topbar">
       <div class="logo" role="img" aria-label="Urge">
-        <img src="./assets/logo-small.png" alt="Urge" width="80" height="30" />
+        <img src="./assets/logo-small.jpg" alt="Urge" width="120" height="44" />
       </div>
     </div>
     <div class="content">
@@ -674,7 +675,7 @@
   <section class="screen" id="screen-capture" aria-label="Your info">
     <div class="topbar">
       <div class="logo" role="img" aria-label="Urge">
-        <img src="./assets/logo-small.png" alt="Urge" width="80" height="30" />
+        <img src="./assets/logo-small.jpg" alt="Urge" width="120" height="44" />
       </div>
     </div>
     <div class="content">
@@ -720,7 +721,7 @@
   <section class="screen" id="screen-quiz" aria-label="Quiz">
     <div class="topbar">
       <div class="logo" role="img" aria-label="Urge">
-        <img src="./assets/logo-small.png" alt="Urge" width="80" height="30" />
+        <img src="./assets/logo-small.jpg" alt="Urge" width="120" height="44" />
       </div>
       <div class="progress-wrap" aria-hidden="true"><div class="progress-bar" id="progressBar"></div></div>
       <div class="step-label" id="stepLabel">1 / 10</div>
@@ -737,7 +738,7 @@
   <section class="screen" id="screen-result" aria-label="Result">
     <div class="topbar">
       <div class="logo" role="img" aria-label="Urge">
-        <img src="./assets/logo-small.png" alt="Urge" width="80" height="30" />
+        <img src="./assets/logo-small.jpg" alt="Urge" width="120" height="44" />
       </div>
       <div class="step-label" id="scoreLabel">0 / 10</div>
     </div>
