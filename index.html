@@ -780,10 +780,13 @@
     </div>
 
     <div class="staff-section">
-      <h3>Cloud backup (optional)</h3>
-      <p class="muted" style="margin-bottom: 10px;">Paste a Google Apps Script web app URL to auto-post leads when online. Offline plays queue until sync.</p>
+      <h3>Cloud backup</h3>
+      <p class="muted" style="margin-bottom: 10px;">
+        Every play saves on this iPad <strong>and</strong> posts to cloud when online
+        (email inbox + optional Google Sheet webhook). Offline plays queue until Sync.
+      </p>
       <label class="field">
-        <span>Webhook URL</span>
+        <span>Extra webhook (Google Sheet Apps Script — optional)</span>
         <input type="url" id="staffWebhook" placeholder="https://script.google.com/macros/s/…/exec" />
       </label>
       <div class="staff-actions">
@@ -814,7 +817,10 @@
       var SETTINGS_KEY = 'urge_quiz_settings_v1';
       var QUESTIONS_PER_ROUND = 10;
 
-      // Paste webhook here OR set it in Staff panel (persists on device)
+      // Cloud sinks (in addition to iPad localStorage).
+      // FormSubmit: first play ever emails a confirm link to this address — click once, then leads flow.
+      var CLOUD_EMAIL = 'omar@tasteurge.com';
+      // Optional extra webhook (Google Apps Script sheet) — also settable in Staff panel
       var DEFAULT_WEBHOOK = '';
 
       /**
@@ -1198,13 +1204,11 @@
             synced: false
           };
           leads.push(row);
-          var ok = persistLeads(leads);
-          // Never block the result screen on network sync
-          if (ok && row) {
-            setTimeout(function () {
-              try { trySyncLead(row); } catch (e) {}
-            }, 0);
-          }
+          try { persistLeads(leads); } catch (e) {}
+          // Always attempt cloud backup (even if local storage is flaky)
+          setTimeout(function () {
+            try { trySyncLead(row); } catch (e) {}
+          }, 0);
           return row;
         } catch (e) {
           console.warn('saveLead failed', e);
@@ -1214,28 +1218,93 @@
 
       function updateLead(id, patch) {
         var leads = loadLeads();
+        if (!Array.isArray(leads)) return;
         var i = leads.findIndex(function (l) { return l.id === id; });
         if (i < 0) return;
         leads[i] = Object.assign({}, leads[i], patch);
         persistLeads(leads);
       }
 
+      function fetchWithTimeout(url, options, ms) {
+        ms = ms || 8000;
+        if (typeof AbortController === 'undefined') {
+          return fetch(url, options);
+        }
+        var ctrl = new AbortController();
+        var t = setTimeout(function () { try { ctrl.abort(); } catch (e) {} }, ms);
+        var opts = Object.assign({}, options, { signal: ctrl.signal });
+        return fetch(url, opts).finally(function () { clearTimeout(t); });
+      }
+
+      /** Post lead to FormSubmit → email inbox (cloud copy you can always open) */
+      function postToEmail(lead) {
+        if (!CLOUD_EMAIL || !navigator.onLine) return Promise.resolve(false);
+        var payload = {
+          _subject: 'Urge Quiz lead' + (lead.winner || lead.perfect ? ' · WINNER' : ''),
+          _template: 'table',
+          _captcha: 'false',
+          name: [lead.firstName, lead.lastName].filter(Boolean).join(' ') || 'Player',
+          email: lead.email || '',
+          firstName: lead.firstName || '',
+          lastName: lead.lastName || '',
+          birthday: lead.birthday || '',
+          score: String(lead.score != null ? lead.score : '') + '/' + String(lead.total != null ? lead.total : ''),
+          perfect: lead.perfect ? 'yes' : 'no',
+          winner: lead.winner || lead.perfect ? 'yes' : 'no',
+          event: lead.event || '',
+          createdAt: lead.createdAt || '',
+          id: lead.id || '',
+          source: 'tasteurge-quiz-kiosk'
+        };
+        return fetchWithTimeout('https://formsubmit.co/ajax/' + encodeURIComponent(CLOUD_EMAIL), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        }, 9000).then(function (res) {
+          return res.ok || res.status === 200;
+        }).catch(function () { return false; });
+      }
+
+      /** Optional Google Apps Script / custom webhook */
+      function postToWebhook(lead) {
+        var url = (settings.webhookUrl || DEFAULT_WEBHOOK || '').trim();
+        if (!url || !navigator.onLine) return Promise.resolve(false);
+        // Apps Script often needs text/plain + no-cors
+        return fetchWithTimeout(url, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(lead)
+        }, 9000).then(function () {
+          // no-cors: opaque response — treat as sent if no throw
+          return true;
+        }).catch(function () { return false; });
+      }
+
       function trySyncLead(lead) {
-        var url = (settings.webhookUrl || '').trim();
-        if (!url || !navigator.onLine) {
+        if (!navigator.onLine) {
           refreshStaffStats();
           return Promise.resolve(false);
         }
-        return fetch(url, {
-          method: 'POST',
-          mode: 'no-cors', // Apps Script often needs this from browser
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify(lead)
-        }).then(function () {
-          // no-cors: assume success if network didn't throw
-          updateLead(lead.id, { synced: true, syncedAt: new Date().toISOString() });
+        // Run email + webhook in parallel; success if either works
+        return Promise.all([
+          postToEmail(lead),
+          postToWebhook(lead)
+        ]).then(function (results) {
+          var ok = !!(results[0] || results[1]);
+          if (ok) {
+            updateLead(lead.id, {
+              synced: true,
+              syncedAt: new Date().toISOString(),
+              syncedEmail: !!results[0],
+              syncedWebhook: !!results[1]
+            });
+          }
           refreshStaffStats();
-          return true;
+          return ok;
         }).catch(function () {
           refreshStaffStats();
           return false;
@@ -1243,26 +1312,31 @@
       }
 
       function syncAllPending() {
-        var url = (settings.webhookUrl || '').trim();
-        if (!url) {
-          $('syncStatus').textContent = 'Sync: no webhook saved';
-          return Promise.resolve();
-        }
         if (!navigator.onLine) {
-          $('syncStatus').textContent = 'Sync: offline — will retry later';
+          setText('syncStatus', 'Sync: offline — will retry when online');
           return Promise.resolve();
         }
-        var pending = loadLeads().filter(function (l) { return !l.synced; });
-        $('syncStatus').textContent = 'Sync: sending ' + pending.length + '…';
+        var pending = loadLeads().filter(function (l) { return l && !l.synced; });
+        if (!pending.length) {
+          setText('syncStatus', 'Sync: all caught up · cloud email → ' + CLOUD_EMAIL);
+          refreshStaffStats();
+          return Promise.resolve();
+        }
+        setText('syncStatus', 'Sync: sending ' + pending.length + ' to cloud…');
         var chain = Promise.resolve();
+        var okCount = 0;
         pending.forEach(function (lead) {
-          chain = chain.then(function () { return trySyncLead(lead); });
+          chain = chain.then(function () {
+            return trySyncLead(lead).then(function (ok) {
+              if (ok) okCount += 1;
+            });
+          });
         });
         return chain.then(function () {
-          var left = loadLeads().filter(function (l) { return !l.synced; }).length;
-          $('syncStatus').textContent = left
-            ? 'Sync: ' + left + ' still pending'
-            : 'Sync: all caught up · ' + new Date().toLocaleTimeString();
+          var left = loadLeads().filter(function (l) { return l && !l.synced; }).length;
+          setText('syncStatus', left
+            ? 'Sync: ' + okCount + ' sent · ' + left + ' still pending'
+            : 'Sync: all caught up · ' + new Date().toLocaleTimeString());
           refreshStaffStats();
         });
       }
