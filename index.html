@@ -780,10 +780,10 @@
     </div>
 
     <div class="staff-section">
-      <h3>Cloud backup (Google Sheet)</h3>
+      <h3>Cloud backup</h3>
       <p class="muted" style="margin-bottom: 10px;">
-        Plays always save on this iPad. When online, they also POST to your Sheet webhook.
-        Offline plays queue until you hit Sync.
+        Online plays save on this iPad, write to the Google Sheet webhook, and join the same
+        Shopify waitlist / marketing list as the website form.
       </p>
       <label class="field">
         <span>Sheet webhook URL</span>
@@ -1237,26 +1237,80 @@
         return (settings.webhookUrl || DEFAULT_WEBHOOK || '').trim();
       }
 
-      /** Google Apps Script / Sheet webhook only — no third-party form services */
-      function trySyncLead(lead) {
-        var url = getWebhookUrl();
-        if (!url || !navigator.onLine) {
-          refreshStaffStats();
+      /**
+       * Same path as the homepage waitlist form on tasteurge.com
+       * POST /contact form_type=customer + accepts_marketing
+       */
+      function postToShopifyWaitlist(lead) {
+        if (!navigator.onLine || !lead || !lead.email) return Promise.resolve(false);
+        try {
+          var body = new URLSearchParams();
+          body.set('form_type', 'customer');
+          body.set('utf8', '\u2713');
+          body.set('contact[email]', lead.email || '');
+          if (lead.firstName) body.set('contact[first_name]', lead.firstName);
+          if (lead.lastName) body.set('contact[last_name]', lead.lastName);
+          body.set('contact[accepts_marketing]', lead.consent === false ? 'false' : 'true');
+          var tags = [
+            'waitlist',
+            'free samples',
+            'early access',
+            'quiz',
+            'source:quiz'
+          ];
+          if (lead.winner || lead.perfect) tags.push('quiz-winner');
+          if (lead.event) tags.push('event:' + String(lead.event).replace(/,/g, ' '));
+          body.set('contact[tags]', tags.join(', '));
+
+          return fetchWithTimeout('https://tasteurge.com/contact', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: body.toString(),
+            credentials: 'same-origin',
+            redirect: 'follow'
+          }, 10000).then(function (res) {
+            // Shopify often 302/200 after customer form; CF may challenge bots but browsers OK
+            return !!(res && (res.ok || res.status === 200 || res.status === 302 || res.type === 'opaqueredirect'));
+          }).catch(function () { return false; });
+        } catch (e) {
           return Promise.resolve(false);
         }
+      }
+
+      /** Google Apps Script: Sheet row + Shopify Admin customer upsert */
+      function postToWebhook(lead) {
+        var url = getWebhookUrl();
+        if (!url || !navigator.onLine) return Promise.resolve(false);
         return fetchWithTimeout(url, {
           method: 'POST',
           mode: 'no-cors',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify(lead)
         }, 9000).then(function () {
-          updateLead(lead.id, {
-            synced: true,
-            syncedAt: new Date().toISOString(),
-            syncedWebhook: true
-          });
-          refreshStaffStats();
           return true;
+        }).catch(function () { return false; });
+      }
+
+      function trySyncLead(lead) {
+        if (!navigator.onLine) {
+          refreshStaffStats();
+          return Promise.resolve(false);
+        }
+        return Promise.all([
+          postToShopifyWaitlist(lead),
+          postToWebhook(lead)
+        ]).then(function (results) {
+          var ok = !!(results[0] || results[1]);
+          if (ok) {
+            updateLead(lead.id, {
+              synced: true,
+              syncedAt: new Date().toISOString(),
+              syncedShopify: !!results[0],
+              syncedWebhook: !!results[1]
+            });
+          }
+          refreshStaffStats();
+          return ok;
         }).catch(function () {
           refreshStaffStats();
           return false;
