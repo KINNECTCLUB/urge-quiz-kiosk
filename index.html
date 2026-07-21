@@ -955,6 +955,7 @@
         index: 0,
         score: 0,
         locked: false,
+        finishing: false,
         consent: false,
         round: [],
         storageOk: true
@@ -1094,11 +1095,15 @@
         state.index = 0;
         state.score = 0;
         state.locked = false;
+        state.finishing = false;
         state.consent = false;
         state.round = [];
-        $('captureForm').reset();
+        try {
+          var form = $('captureForm');
+          if (form) form.reset();
+        } catch (e) {}
         setConsent(false);
-        $('captureError').textContent = '';
+        setText('captureError', '');
         applyExpressUi();
         applyIdleCopy();
         show('idle');
@@ -1108,6 +1113,7 @@
         state.index = 0;
         state.score = 0;
         state.locked = false;
+        state.finishing = false;
         state.round = pickRound();
         renderQuestion();
         show('quiz');
@@ -1134,10 +1140,14 @@
       }
 
       function onAnswer(choiceIndex, btn) {
-        if (state.locked) return;
+        if (state.locked || state.finishing) return;
         state.locked = true;
 
         var item = state.round[state.index];
+        if (!item) {
+          finish();
+          return;
+        }
         var buttons = Array.prototype.slice.call($('choices').querySelectorAll('.choice'));
         buttons.forEach(function (b) { b.disabled = true; });
 
@@ -1145,31 +1155,61 @@
         if (choiceIndex === item.answer) {
           state.score += 1;
         }
-        btn.classList.add('selected');
+        if (btn) btn.classList.add('selected');
 
-        $('progressBar').style.width = ((state.index + 1) / state.round.length * 100) + '%';
+        var bar = $('progressBar');
+        if (bar) bar.style.width = ((state.index + 1) / state.round.length * 100) + '%';
 
-        setTimeout(function () {
-          if (state.index < state.round.length - 1) {
-            state.index += 1;
-            renderQuestion();
-          } else {
+        window.setTimeout(function () {
+          try {
+            if (state.index < state.round.length - 1) {
+              state.index += 1;
+              renderQuestion();
+            } else {
+              finish();
+            }
+          } catch (err) {
+            console.warn('advance failed', err);
             finish();
           }
-        }, 280);
+        }, 220);
       }
 
       function saveLead(lead) {
-        var leads = loadLeads();
-        var row = Object.assign({}, lead, {
-          email: (lead.email || '').toLowerCase(),
-          id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
-          synced: false
-        });
-        leads.push(row);
-        var ok = persistLeads(leads);
-        if (ok) trySyncLead(row);
-        return row;
+        try {
+          var leads = loadLeads();
+          if (!Array.isArray(leads)) leads = [];
+          var row = {
+            firstName: lead.firstName || '',
+            lastName: lead.lastName || '',
+            email: (lead.email || '').toLowerCase(),
+            birthday: lead.birthday || '',
+            consent: !!lead.consent,
+            score: lead.score,
+            total: lead.total,
+            perfect: !!lead.perfect,
+            winner: !!lead.winner,
+            nearMiss: !!lead.nearMiss,
+            express: !!lead.express,
+            event: lead.event || 'live-quiz',
+            createdAt: lead.createdAt || new Date().toISOString(),
+            userAgent: (lead.userAgent || '').slice(0, 160),
+            id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+            synced: false
+          };
+          leads.push(row);
+          var ok = persistLeads(leads);
+          // Never block the result screen on network sync
+          if (ok && row) {
+            setTimeout(function () {
+              try { trySyncLead(row); } catch (e) {}
+            }, 0);
+          }
+          return row;
+        } catch (e) {
+          console.warn('saveLead failed', e);
+          return null;
+        }
       }
 
       function updateLead(id, patch) {
@@ -1227,61 +1267,94 @@
         });
       }
 
+      function setText(id, text) {
+        var el = $(id);
+        if (el) el.textContent = text;
+      }
+
       function finish() {
-        var total = state.round.length;
-        var score = state.score;
+        // Guard against double-fire (iPad can queue two timeouts if laggy)
+        if (state.finishing) return;
+        state.finishing = true;
+        state.locked = true;
+
+        var total = (state.round && state.round.length) ? state.round.length : QUESTIONS_PER_ROUND;
+        var score = state.score || 0;
         var perfect = isPerfect(score, total);
         var near = isNearMiss(score, total);
+        var player = state.player || { firstName: '', lastName: '', email: '', birthday: '' };
 
-        var lead = {
-          firstName: state.player.firstName,
-          lastName: state.player.lastName || '',
-          email: state.player.email,
-          birthday: state.player.birthday || '',
-          consent: true,
-          score: score,
-          total: total,
-          perfect: perfect,
-          winner: perfect, // prize only for all 10 correct — never partial scores
-          nearMiss: near,
-          express: !!settings.express,
-          event: settings.event || 'live-quiz',
-          createdAt: new Date().toISOString(),
-          userAgent: navigator.userAgent.slice(0, 160)
-        };
-        saveLead(lead);
+        // Paint result screen first so a storage/network hiccup never looks like a crash
+        try {
+          setText('scoreLabel', score + ' / ' + total);
+          var badge = $('resultBadge');
+          if (badge) {
+            badge.classList.remove('win', 'near');
+            if (perfect) {
+              badge.classList.add('win');
+              badge.textContent = 'You won';
+            } else if (near) {
+              badge.classList.add('near');
+              badge.textContent = 'So close';
+            } else {
+              badge.textContent = 'Thanks for playing';
+            }
+          }
 
-        $('scoreLabel').textContent = score + ' / ' + total;
-        var badge = $('resultBadge');
-        badge.classList.remove('win', 'near');
+          if (perfect) {
+            setText('resultTitle', 'A free year is yours');
+            setText('resultLede',
+              'All 10 right. Pick your box — we’ll ship one a month for 12 months. Show this screen to the Urge team.');
+            setText('resultNote', 'We’ll email you to confirm shipping. That was impressive.');
+          } else if (near) {
+            setText('resultTitle', score + ' / ' + total);
+            setText('resultLede',
+              'Prize needs a perfect 10 — but you’re still on the list for samples, early access, and flavor drops.');
+            setText('resultNote', 'Thanks for playing. Next player whenever you’re ready.');
+          } else {
+            setText('resultTitle', score + ' / ' + total);
+            setText('resultLede',
+              'You’re on the list — early access, flavor votes, and updates from Urge.');
+            setText('resultNote', 'We’ll be in touch. Next player whenever you’re ready.');
+          }
 
-        if (perfect) {
-          badge.classList.add('win');
-          badge.textContent = 'You won';
-          $('resultTitle').textContent = 'A free year is yours';
-          $('resultLede').textContent =
-            'All 10 right. Pick your box — we’ll ship one a month for 12 months. Show this screen to the Urge team.';
-          $('resultNote').textContent =
-            'We’ll email you to confirm shipping. That was impressive.';
-        } else if (near) {
-          badge.classList.add('near');
-          badge.textContent = 'So close';
-          $('resultTitle').textContent = score + ' / ' + total;
-          $('resultLede').textContent =
-            'Prize needs a perfect 10 — but you’re still on the list for samples, early access, and flavor drops.';
-          $('resultNote').textContent =
-            'Thanks for playing. Next player whenever you’re ready.';
-        } else {
-          badge.textContent = 'Thanks for playing';
-          $('resultTitle').textContent = score + ' / ' + total;
-          $('resultLede').textContent =
-            'You’re on the list — early access, flavor votes, and updates from Urge.';
-          $('resultNote').textContent =
-            'We’ll be in touch. Next player whenever you’re ready.';
+          show('result');
+
+          // Ensure Next Player is usable even if something else hangs
+          var nextBtn = $('btnNextPlayer');
+          if (nextBtn) {
+            nextBtn.disabled = false;
+            nextBtn.style.pointerEvents = 'auto';
+          }
+        } catch (uiErr) {
+          console.warn('result UI failed', uiErr);
+          try { show('result'); } catch (e2) {}
         }
 
-        show('result');
-        refreshStaffStats();
+        // Persist after paint (never block the end screen)
+        window.setTimeout(function () {
+          try {
+            saveLead({
+              firstName: player.firstName,
+              lastName: player.lastName || '',
+              email: player.email,
+              birthday: player.birthday || '',
+              consent: true,
+              score: score,
+              total: total,
+              perfect: perfect,
+              winner: perfect,
+              nearMiss: near,
+              express: !!settings.express,
+              event: settings.event || 'live-quiz',
+              createdAt: new Date().toISOString(),
+              userAgent: (navigator.userAgent || '').slice(0, 160)
+            });
+          } catch (saveErr) {
+            console.warn('deferred save failed', saveErr);
+          }
+          try { refreshStaffStats(); } catch (statsErr) {}
+        }, 50);
       }
 
       function toCsv(rows) {
@@ -1317,33 +1390,45 @@
       }
 
       function refreshStaffStats() {
-        var leads = loadLeads();
-        var winners = leads.filter(function (l) { return l.winner || l.perfect; });
-        var near = leads.filter(function (l) { return l.nearMiss; });
-        var unsynced = leads.filter(function (l) { return !l.synced; });
-        $('statEntries').textContent = String(leads.length);
-        $('statWinners').textContent = String(winners.length);
-        $('statNear').textContent = String(near.length);
-        $('statUnsynced').textContent = String(unsynced.length);
+        try {
+          var leads = loadLeads();
+          if (!Array.isArray(leads)) leads = [];
+          var winners = leads.filter(function (l) { return l && (l.winner || l.perfect); });
+          var near = leads.filter(function (l) { return l && l.nearMiss; });
+          var unsynced = leads.filter(function (l) { return l && !l.synced; });
 
-        $('staffMeta').textContent =
-          'Event: ' + (settings.event || '—') +
-          ' · ' + (navigator.onLine ? 'Online' : 'Offline') +
-          ' · Storage ' + (state.storageOk ? 'OK' : 'BLOCKED') +
-          (settings.express ? ' · Express' : '') +
-          ' · Prize = 10/10 only';
+          setText('statEntries', String(leads.length));
+          setText('statWinners', String(winners.length));
+          setText('statNear', String(near.length));
+          setText('statUnsynced', String(unsynced.length));
 
-        var list = $('winnerList');
-        if (!winners.length) {
-          list.innerHTML = '<div class="muted">None yet</div>';
-        } else {
-          list.innerHTML = winners.slice().reverse().map(function (w) {
-            return '<div><strong>' + escapeHtml(w.firstName || '') + ' ' + escapeHtml(w.lastName || '') +
-              '</strong> · ' + escapeHtml(w.email || '') +
-              ' · ' + (w.score != null ? w.score + '/' + w.total : '') +
-              (w.createdAt ? ' · ' + new Date(w.createdAt).toLocaleTimeString() : '') +
-              '</div>';
-          }).join('');
+          var meta = $('staffMeta');
+          if (meta) {
+            meta.textContent =
+              'Event: ' + (settings.event || '—') +
+              ' · ' + (navigator.onLine ? 'Online' : 'Offline') +
+              ' · Storage ' + (state.storageOk ? 'OK' : 'BLOCKED') +
+              (settings.express ? ' · Express' : '') +
+              ' · Prize = 10/10 only';
+          }
+
+          var list = $('winnerList');
+          if (!list) return;
+          if (!winners.length) {
+            list.innerHTML = '<div class="muted">None yet</div>';
+          } else {
+            // Cap list so a long night can’t freeze the iPad DOM
+            var slice = winners.slice().reverse().slice(0, 40);
+            list.innerHTML = slice.map(function (w) {
+              return '<div><strong>' + escapeHtml(w.firstName || '') + ' ' + escapeHtml(w.lastName || '') +
+                '</strong> · ' + escapeHtml(w.email || '') +
+                ' · ' + (w.score != null ? w.score + '/' + w.total : '') +
+                (w.createdAt ? ' · ' + new Date(w.createdAt).toLocaleTimeString() : '') +
+                '</div>';
+            }).join('');
+          }
+        } catch (e) {
+          console.warn('refreshStaffStats', e);
         }
       }
 
@@ -1536,16 +1621,20 @@
         setTimeout(function () { syncAllPending(); }, 800);
       }
 
-      if (navigator.wakeLock) {
-        document.addEventListener('visibilitychange', function () {
-          if (document.visibilityState === 'visible') {
-            navigator.wakeLock.request('screen').catch(function () {});
-          }
-        });
-        navigator.wakeLock.request('screen').catch(function () {});
+      // Wake Lock can hang some iPads — only try once, never on every visibility flip
+      if (navigator.wakeLock && navigator.wakeLock.request) {
+        try {
+          navigator.wakeLock.request('screen').catch(function () {});
+        } catch (e) {}
       }
 
-      if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {
+      // Only register SW on non-Shopify hosts (Shopify CDN paths break SW)
+      if (
+        'serviceWorker' in navigator &&
+        location.protocol.indexOf('http') === 0 &&
+        location.hostname.indexOf('myshopify.com') === -1 &&
+        location.hostname.indexOf('tasteurge.com') === -1
+      ) {
         navigator.serviceWorker.register('./sw.js').catch(function () {});
       }
     })();

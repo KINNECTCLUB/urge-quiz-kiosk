@@ -1,5 +1,5 @@
 /* Cache shell so iPad works offline after first open (no Mac needed) */
-const CACHE = 'urge-quiz-kiosk-v12';
+const CACHE = 'urge-quiz-kiosk-v13';
 const ASSETS = [
   './',
   './index.html',
