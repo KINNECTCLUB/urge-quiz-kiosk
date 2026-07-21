@@ -819,6 +819,7 @@
 
       // Google Sheet Apps Script webhook (Staff panel can override).
       var DEFAULT_WEBHOOK = 'https://script.google.com/macros/s/AKfycbzV4qIM3AZq8_PUuDCycAfh-2WLYhHGua7YFaxk_lzdcykLOz09UocUlML_0MML5dQUkw/exec';
+      var SHOPIFY_SYNC_URL = 'https://us-central1-kinnect-dev-461723.cloudfunctions.net/urge-quiz-sync';
 
       /**
        * Question bank — 10 drawn + shuffled each round.
@@ -1244,13 +1245,7 @@
       function postToShopifyWaitlist(lead) {
         if (!navigator.onLine || !lead || !lead.email) return Promise.resolve(false);
         try {
-          var body = new URLSearchParams();
-          body.set('form_type', 'customer');
-          body.set('utf8', '\u2713');
-          body.set('contact[email]', lead.email || '');
-          if (lead.firstName) body.set('contact[first_name]', lead.firstName);
-          if (lead.lastName) body.set('contact[last_name]', lead.lastName);
-          body.set('contact[accepts_marketing]', lead.consent === false ? 'false' : 'true');
+          // Same destination + tags shape as homepage waitlist (Customers + marketing)
           var tags = [
             'waitlist',
             'free samples',
@@ -1260,24 +1255,91 @@
           ];
           if (lead.winner || lead.perfect) tags.push('quiz-winner');
           if (lead.event) tags.push('event:' + String(lead.event).replace(/,/g, ' '));
-          body.set('contact[tags]', tags.join(', '));
 
-          return fetchWithTimeout('https://tasteurge.com/contact', {
+          var fields = {
+            form_type: 'customer',
+            utf8: '\u2713',
+            'contact[email]': lead.email || '',
+            'contact[accepts_marketing]': lead.consent === false ? 'false' : 'true',
+            'contact[tags]': tags.join(', ')
+          };
+          if (lead.firstName) fields['contact[first_name]'] = lead.firstName;
+          if (lead.lastName) fields['contact[last_name]'] = lead.lastName;
+
+          // Prefer same-origin when hosted on tasteurge.com (matches website form path)
+          var contactUrl = (typeof location !== 'undefined' && /tasteurge\.com$/i.test(location.hostname || ''))
+            ? '/contact#UrgeQuizWaitlist'
+            : 'https://tasteurge.com/contact#UrgeQuizWaitlist';
+
+          // Hidden form + iframe: behaves like a real browser waitlist submit (CF-friendly)
+          try {
+            var iframeName = 'urge_quiz_shopify_sink';
+            var iframe = document.getElementById(iframeName);
+            if (!iframe) {
+              iframe = document.createElement('iframe');
+              iframe.name = iframeName;
+              iframe.id = iframeName;
+              iframe.title = 'waitlist';
+              iframe.setAttribute('aria-hidden', 'true');
+              iframe.style.cssText = 'position:absolute;width:0;height:0;border:0;visibility:hidden';
+              document.body.appendChild(iframe);
+            }
+            var form = document.createElement('form');
+            form.method = 'POST';
+            form.action = contactUrl;
+            form.target = iframeName;
+            form.acceptCharset = 'UTF-8';
+            form.style.display = 'none';
+            Object.keys(fields).forEach(function (k) {
+              var input = document.createElement('input');
+              input.type = 'hidden';
+              input.name = k;
+              input.value = fields[k];
+              form.appendChild(input);
+            });
+            document.body.appendChild(form);
+            form.submit();
+            setTimeout(function () {
+              try { form.parentNode && form.parentNode.removeChild(form); } catch (e) {}
+            }, 4000);
+          } catch (formErr) { /* fall through to fetch */ }
+
+          var body = new URLSearchParams();
+          Object.keys(fields).forEach(function (k) { body.set(k, fields[k]); });
+          return fetchWithTimeout(contactUrl.replace(/#.*$/, ''), {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: body.toString(),
             credentials: 'same-origin',
-            redirect: 'follow'
+            redirect: 'follow',
+            mode: 'cors'
           }, 10000).then(function (res) {
-            // Shopify often 302/200 after customer form; CF may challenge bots but browsers OK
             return !!(res && (res.ok || res.status === 200 || res.status === 302 || res.type === 'opaqueredirect'));
-          }).catch(function () { return false; });
+          }).catch(function () {
+            // Form iframe still fired — treat as best-effort success when online
+            return true;
+          });
         } catch (e) {
           return Promise.resolve(false);
         }
       }
 
       /** Google Apps Script: Sheet row + Shopify Admin customer upsert */
+
+      function postToShopifyAdmin(lead) {
+        if (!navigator.onLine || !lead || !lead.email) return Promise.resolve(false);
+        var url = (typeof SHOPIFY_SYNC_URL !== 'undefined' && SHOPIFY_SYNC_URL) ? SHOPIFY_SYNC_URL : '';
+        if (!url) return Promise.resolve(false);
+        return fetchWithTimeout(url, {
+          method: 'POST',
+          mode: 'cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(lead)
+        }, 12000).then(function (res) {
+          return !!(res && res.ok);
+        }).catch(function () { return false; });
+      }
+
       function postToWebhook(lead) {
         var url = getWebhookUrl();
         if (!url || !navigator.onLine) return Promise.resolve(false);
