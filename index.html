@@ -817,9 +817,8 @@
       var SETTINGS_KEY = 'urge_quiz_settings_v1';
       var QUESTIONS_PER_ROUND = 10;
 
-      // Google Sheet Apps Script webhook (set here and/or in Staff panel).
-      // No third-party form services. Paste your /exec URL after deploying sheet-webhook.gs
-      var DEFAULT_WEBHOOK = '';
+      // Google Sheet Apps Script webhook (Staff panel can override).
+      var DEFAULT_WEBHOOK = 'https://script.google.com/macros/s/AKfycbzV4qIM3AZq8_PUuDCycAfh-2WLYhHGua7YFaxk_lzdcykLOz09UocUlML_0MML5dQUkw/exec';
 
       /**
        * Question bank — 10 drawn + shuffled each round.
