@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Introducing Urge</title>
+  <style>
+    /* Figma Urge · pg6 (node 64:255) — 1920×1080 presentation frame */
+    @font-face {
+      font-family: 'BC';
+      src: url('./fonts/bc-normal-800.ttf') format('truetype');
+      font-weight: 800;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: 'BC';
+      src: url('./fonts/bc-italic-800.ttf') format('truetype');
+      font-weight: 800;
+      font-style: italic;
+    }
+    @font-face {
+      font-family: 'Mont';
+      src: url('./fonts/montserrat-500.ttf') format('truetype');
+      font-weight: 500;
+    }
+
+    :root {
+      --cream: #f2ecda;
+      --licorice: #3c3732;
+      --berry: #5d79ff;
+      --photo-overlay: rgba(20, 70, 70, 0.22);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      height: 100%;
+      background: #111;
+      color: var(--licorice);
+      font-family: 'Mont', system-ui, -apple-system, sans-serif;
+    }
+
+    .slide {
+      width: 100%;
+      max-width: 1920px;
+      margin: 0 auto;
+      min-height: 100dvh;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      background: var(--cream);
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* —— Left panel —— */
+    .panel-left {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: clamp(40px, 6vw, 100px) clamp(36px, 5.5vw, 110px);
+      padding-bottom: clamp(56px, 7vw, 90px);
+      z-index: 2;
+    }
+
+    .headline-block {
+      display: flex;
+      flex-direction: column;
+      gap: clamp(4px, 0.6vw, 10px);
+      max-width: 34rem;
+    }
+
+    .introducing {
+      font-family: 'BC', Impact, sans-serif;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: var(--licorice);
+      font-size: clamp(2.6rem, 6.2vw, 5.75rem);
+      line-height: 0.92;
+      letter-spacing: -0.03em;
+    }
+
+    .logo-wordmark {
+      display: block;
+      width: min(100%, 420px);
+      height: auto;
+      margin-top: clamp(4px, 0.8vw, 12px);
+    }
+
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      margin: clamp(28px, 3.5vw, 48px) 0;
+      max-width: 520px;
+    }
+    .divider-line {
+      flex: 1;
+      height: 1.5px;
+      background: var(--licorice);
+      opacity: 0.85;
+    }
+    .divider-star {
+      width: 28px;
+      height: 30px;
+      margin: 0 14px;
+      flex-shrink: 0;
+      object-fit: contain;
+    }
+
+    .body-copy {
+      max-width: 34rem;
+      font-size: clamp(1.15rem, 2.15vw, 2rem);
+      line-height: 1.28;
+      color: var(--licorice);
+      font-weight: 500;
+    }
+    .body-copy p + p { margin-top: clamp(18px, 2.2vw, 32px); }
+    .body-copy .accent {
+      color: var(--berry);
+      font-weight: 600;
+    }
+    .body-copy .lollipops {
+      position: relative;
+      display: inline-block;
+      color: var(--berry);
+      font-weight: 600;
+    }
+    .body-copy .lollipops::after {
+      content: '';
+      position: absolute;
+      left: -2%;
+      right: -4%;
+      bottom: -0.12em;
+      height: 0.28em;
+      background: url('./assets/figma-pg6/underline.svg') center / 100% 100% no-repeat;
+      pointer-events: none;
+    }
+
+    .footer-logo {
+      position: absolute;
+      left: clamp(36px, 5.5vw, 110px);
+      bottom: clamp(28px, 4vw, 48px);
+      height: clamp(18px, 2vw, 28px);
+      width: auto;
+      opacity: 0.95;
+    }
+
+    /* —— Right panel —— */
+    .panel-right {
+      position: relative;
+      min-height: 100%;
+      overflow: hidden;
+      background: #1a3a3a;
+    }
+    .panel-right img.hero {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center 40%;
+    }
+    .panel-right .veil {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        160deg,
+        rgba(15, 55, 55, 0.15) 0%,
+        rgba(20, 70, 65, 0.35) 50%,
+        rgba(10, 40, 40, 0.45) 100%
+      );
+      pointer-events: none;
+    }
+    .right-copy {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: flex-start;
+      padding: clamp(36px, 5vw, 80px);
+      z-index: 2;
+      color: #f6f1e6;
+    }
+    .right-copy h2 {
+      font-family: 'BC', Georgia, serif;
+      font-style: italic;
+      font-weight: 800;
+      font-size: clamp(2.4rem, 5.2vw, 4.6rem);
+      line-height: 1.02;
+      letter-spacing: -0.02em;
+      text-shadow: 0 2px 24px rgba(0,0,0,0.25);
+    }
+    .right-copy .sub {
+      margin-top: clamp(20px, 3vw, 36px);
+      font-size: clamp(0.95rem, 1.5vw, 1.25rem);
+      letter-spacing: 0.02em;
+      opacity: 0.95;
+      line-height: 1.35;
+    }
+    .right-copy .brand {
+      margin-top: clamp(28px, 4vw, 48px);
+      font-family: 'BC', sans-serif;
+      font-style: italic;
+      font-size: clamp(1.6rem, 3vw, 2.6rem);
+      opacity: 0.55;
+      letter-spacing: -0.02em;
+    }
+
+    /* Portrait / tablet: stack */
+    @media (max-width: 900px) {
+      .slide {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto minmax(48vh, 1fr);
+      }
+      .panel-right {
+        min-height: 48vh;
+        order: -1;
+      }
+      .panel-left {
+        padding: 40px 28px 72px;
+      }
+      .footer-logo {
+        left: 28px;
+        bottom: 24px;
+      }
+    }
+
+    /* Exact presentation mode (16:9) */
+    @media (min-aspect-ratio: 16/10) and (min-width: 1100px) {
+      body {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #0a0a0a;
+      }
+      .slide {
+        width: min(100vw, calc(100vh * 1920 / 1080));
+        height: min(100vh, calc(100vw * 1080 / 1920));
+        min-height: 0;
+        aspect-ratio: 1920 / 1080;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Figma: Urge · node 64:255 "pg6" -->
+  <main class="slide" role="img" aria-label="Introducing Urge presentation slide">
+    <section class="panel-left">
+      <div class="headline-block">
+        <div class="introducing">Introducing</div>
+        <img class="logo-wordmark" src="./assets/figma-pg6/logo-large.png" alt="urge" width="500" height="185" />
+      </div>
+
+      <div class="divider" aria-hidden="true">
+        <span class="divider-line"></span>
+        <img class="divider-star" src="./assets/figma-pg6/star.png" alt="" width="56" height="61" />
+        <span class="divider-line"></span>
+      </div>
+
+      <div class="body-copy">
+        <p>
+          Replacing sugar-filled<br />
+          candy form factors with<br />
+          <span class="accent">functional ingredients.</span>
+        </p>
+        <p>
+          Starting with
+          <span class="lollipops">Lollipops.</span>
+        </p>
+      </div>
+
+      <img class="footer-logo" src="./assets/figma-pg6/logo-small.png" alt="urge" width="80" height="30" />
+    </section>
+
+    <section class="panel-right" aria-hidden="false">
+      <img class="hero" src="./assets/figma-pg6/photo-full.png" alt="Person enjoying an Urge lollipop" width="864" height="1080" />
+      <div class="veil"></div>
+      <div class="right-copy">
+        <h2>
+          no water<br />
+          no mixing<br />
+          no waiting
+        </h2>
+        <p class="sub">electrolyte &amp; anti-stress<br />lollipops</p>
+        <div class="brand">urge</div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

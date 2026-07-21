@@ -1,0 +1,33 @@
+Urge Quiz on tasteurge.com (Shopify)
+
+Theme files added (local theme folder):
+  /Users/omar/tasteurge-theme/layout/quiz.liquid
+  /Users/omar/tasteurge-theme/templates/page.quiz.liquid
+  /Users/omar/tasteurge-theme/assets/urge-quiz-*
+
+Deploy (run in your terminal — needs interactive Shopify login):
+  cd /Users/omar/tasteurge-theme
+  shopify theme push --store tasteurge.myshopify.com --nodelete \
+    --only templates/page.quiz.liquid \
+    --only layout/quiz.liquid \
+    --only "assets/urge-quiz-*"
+
+  Or push entire theme, or use Shopify Admin → Online Store → Themes → Edit code
+  and upload the same files.
+
+Create the page:
+  1. Admin → Online Store → Pages → Add page
+  2. Title: Quiz (or "Win a free year")
+  3. Visibility: Visible
+  4. Theme template: quiz
+  5. Save
+
+URL will be:
+  https://tasteurge.com/pages/quiz
+  (handle "quiz" = handle)
+
+iPad: open that URL → Add to Home Screen
+(Note: leads are stored per-origin; new domain = fresh localStorage)
+
+GitHub Pages remains as backup:
+  https://kinnectclub.github.io/urge-quiz-kiosk/
