@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Urge Quiz" />
   <meta name="format-detection" content="telephone=no" />
-  <meta name="theme-color" content="#F4F6EF" />
+  <meta name="theme-color" content="#F7F0E6" />
   <title>Urge Quiz · Win a free year</title>
   <!--
     Design system: Kinnect-quality warmth for Urge booth kiosk.
@@ -38,28 +38,37 @@
     }
 
     :root {
-      /* Kinnect mist + moss, adapted for Urge booth */
-      --bg0: #eef1e8;
-      --bg1: #f7f8f2;
-      --bg2: #fcfcfa;
-      --ink: #232323;
-      --fg: #232323;
-      --mid: rgba(35, 35, 35, 0.72);
-      --dim: rgba(35, 35, 35, 0.48);
-      --line: rgba(35, 35, 35, 0.1);
-      --moss: #5e7034;
-      --moss-deep: #3d4a24;
-      --glass: rgba(255, 255, 255, 0.78);
-      --glass-strong: rgba(255, 255, 255, 0.92);
-      --ok: #3d7a4a;
-      --ok-soft: rgba(94, 112, 52, 0.12);
-      --bad: #b54a4a;
-      --warn: #a67c2a;
+      /* tasteurge.com brand tokens (urge-brand.css) */
+      --marshmallow: #F7F0E6;
+      --licorice: #3C3732;
+      --mint: #0E9E62;
+      --butternut: #FFCB70;
+      --cotton: #AECFFA;
+      --plum: #D0B3D5;
+      --blueberry: #5D79FF;
+      --blood: #FF4D00;
+      --bg0: #F2EAD9;
+      --bg1: var(--marshmallow);
+      --bg2: #FBF7F0;
+      --ink: var(--licorice);
+      --fg: var(--licorice);
+      --mid: rgba(60, 55, 50, 0.72);
+      --dim: rgba(60, 55, 50, 0.48);
+      --line: rgba(60, 55, 50, 0.12);
+      --accent: var(--blood);
+      --accent-soft: rgba(255, 77, 0, 0.12);
+      --glass: rgba(255, 255, 255, 0.72);
+      --glass-strong: rgba(255, 255, 255, 0.9);
+      --ok: var(--mint);
+      --ok-soft: rgba(14, 158, 98, 0.12);
+      --bad: #c44a3a;
+      --warn: #b8860b;
       --pad: max(16px, env(safe-area-inset-top));
       --pad-x: max(18px, env(safe-area-inset-left));
       --pad-b: max(18px, env(safe-area-inset-bottom));
-      --shadow: 0 12px 40px rgba(35, 35, 35, 0.08);
-      --radius: 20px;
+      --shadow: 0 12px 36px rgba(60, 55, 50, 0.1);
+      --radius: 18px;
+      --ease: cubic-bezier(0.22, 1, 0.36, 1);
     }
 
     * {
@@ -72,9 +81,9 @@
     html, body {
       height: 100%;
       height: 100dvh;
-      background: var(--bg1);
+      background: var(--marshmallow);
       color: var(--fg);
-      font-family: 'Mont', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      font-family: 'Mont', 'Montserrat', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
       overflow: hidden;
       overscroll-behavior: none;
       touch-action: manipulation;
@@ -91,9 +100,10 @@
         var(--pad-b)
         max(18px, env(safe-area-inset-left));
       background:
-        radial-gradient(ellipse 80% 55% at 12% 0%, rgba(188, 220, 209, 0.45) 0%, transparent 55%),
-        radial-gradient(ellipse 60% 45% at 100% 10%, rgba(165, 146, 56, 0.12) 0%, transparent 50%),
-        linear-gradient(165deg, var(--bg0) 0%, var(--bg1) 42%, var(--bg2) 100%);
+        radial-gradient(ellipse 70% 50% at 0% 0%, rgba(174, 207, 250, 0.28) 0%, transparent 55%),
+        radial-gradient(ellipse 55% 40% at 100% 8%, rgba(208, 179, 213, 0.22) 0%, transparent 50%),
+        radial-gradient(ellipse 50% 35% at 80% 100%, rgba(255, 77, 0, 0.06) 0%, transparent 45%),
+        linear-gradient(165deg, var(--bg0) 0%, var(--marshmallow) 45%, var(--bg2) 100%);
     }
     input, textarea, select { -webkit-user-select: text; user-select: text; }
 
@@ -124,14 +134,14 @@
       flex: 1;
       max-width: 200px;
       height: 5px;
-      background: rgba(35, 35, 35, 0.08);
+      background: rgba(60, 55, 50, 0.1);
       border-radius: 99px;
       overflow: hidden;
     }
     .progress-bar {
       height: 100%;
       width: 0%;
-      background: linear-gradient(90deg, var(--moss), #7a8f4a);
+      background: linear-gradient(90deg, var(--blood), #ff7a3d);
       transition: width 0.28s ease;
     }
     .step-label {
@@ -155,19 +165,21 @@
 
     .eyebrow {
       font-size: clamp(0.72rem, 1.6vw, 0.82rem);
-      letter-spacing: 0.1em;
+      letter-spacing: 0.12em;
       text-transform: uppercase;
-      color: var(--moss);
+      color: var(--blood);
       margin-bottom: 12px;
       font-weight: 700;
+      font-family: 'Mont', 'Montserrat', system-ui, sans-serif;
     }
     h1 {
-      font-family: 'BC', system-ui, sans-serif;
+      font-family: 'BC', 'Gasoek One', 'League Gothic', Impact, sans-serif;
+      text-transform: uppercase;
       font-size: clamp(2.1rem, 7vw, 3.6rem);
-      line-height: 1.02;
-      letter-spacing: -0.03em;
+      line-height: 0.98;
+      letter-spacing: -0.02em;
       margin-bottom: 14px;
-      color: var(--ink);
+      color: var(--licorice);
       font-weight: 800;
     }
     h1.screen-title {
@@ -186,17 +198,19 @@
       display: inline-flex;
       align-items: center;
       gap: 10px;
-      border: 1px solid rgba(94, 112, 52, 0.28);
+      border: 1.5px solid rgba(255, 77, 0, 0.35);
       border-radius: 999px;
       padding: 11px 16px;
-      font-size: clamp(0.82rem, 2vw, 0.95rem);
-      font-weight: 600;
-      color: var(--moss-deep);
+      font-size: clamp(0.78rem, 2vw, 0.9rem);
+      font-weight: 700;
+      color: var(--licorice);
       margin-bottom: 18px;
-      background: var(--ok-soft);
-      letter-spacing: 0.01em;
+      background: var(--accent-soft);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      font-family: 'Mont', 'Montserrat', system-ui, sans-serif;
     }
-    .prize-pill strong { color: var(--moss-deep); font-weight: 800; }
+    .prize-pill strong { color: var(--blood); font-weight: 800; }
 
     .product-row {
       display: grid;
@@ -206,12 +220,10 @@
       max-width: 560px;
     }
     .product-card {
-      border: 1px solid rgba(255, 255, 255, 0.7);
-      border-radius: 18px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
       overflow: hidden;
-      background: var(--glass);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
+      background: rgba(255, 255, 255, 0.55);
       text-align: center;
       box-shadow: var(--shadow);
     }
@@ -220,45 +232,53 @@
       width: 100%;
       aspect-ratio: 1;
       object-fit: cover;
-      background: #eceee6;
+      background: #efe8da;
     }
     .product-card .name {
-      font-size: clamp(0.78rem, 1.8vw, 0.92rem);
+      font-size: clamp(0.72rem, 1.8vw, 0.88rem);
       font-weight: 700;
-      letter-spacing: 0.02em;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
       padding: 11px 8px 13px;
-      color: var(--ink);
+      color: var(--licorice);
+      font-family: 'Mont', 'Montserrat', system-ui, sans-serif;
     }
 
     .btn {
       appearance: none;
       border: none;
-      border-radius: 18px;
-      font-family: 'Mont', system-ui, sans-serif;
-      font-weight: 700;
+      border-radius: 999px;
+      font-family: 'Mont', 'Montserrat', system-ui, sans-serif;
+      font-weight: 600;
       letter-spacing: 0.01em;
-      font-size: clamp(1rem, 2.6vw, 1.15rem);
-      padding: 17px 24px;
+      font-size: clamp(0.95rem, 2.4vw, 1.05rem);
+      padding: 0.9rem 1.4rem;
       cursor: pointer;
-      transition: transform 0.12s ease, opacity 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
-      min-height: 58px;
+      transition: transform 0.18s var(--ease), box-shadow 0.18s var(--ease), background 0.18s ease;
+      min-height: 3.15rem;
     }
+    .btn:hover { transform: translateY(-1px) scale(1.01); }
     .btn:active { transform: scale(0.98); }
     .btn-primary {
-      background: linear-gradient(165deg, #4a5c2c 0%, var(--moss) 55%, #6b8040 100%);
-      color: #fcfcfa;
+      background: var(--licorice);
+      color: var(--marshmallow);
       width: 100%;
       max-width: 520px;
-      box-shadow: 0 10px 28px rgba(94, 112, 52, 0.28);
+      box-shadow: 0 8px 24px rgba(60, 55, 50, 0.22);
+    }
+    .btn-primary:hover {
+      box-shadow: 0 12px 28px rgba(60, 55, 50, 0.28);
     }
     .btn-ghost {
-      background: var(--glass);
-      color: var(--ink);
-      border: 1px solid var(--line);
+      background: transparent;
+      color: var(--licorice);
+      border: 1.5px solid rgba(60, 55, 50, 0.28);
       width: 100%;
       max-width: 520px;
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
+    }
+    .btn-ghost:hover {
+      border-color: var(--licorice);
+      background: rgba(60, 55, 50, 0.04);
     }
     .btn-row {
       display: flex;
@@ -301,8 +321,8 @@
       box-shadow: 0 1px 2px rgba(35, 35, 35, 0.04);
     }
     input:focus, select:focus {
-      border-color: rgba(94, 112, 52, 0.45);
-      box-shadow: 0 0 0 3px rgba(94, 112, 52, 0.12);
+      border-color: rgba(255, 77, 0, 0.45);
+      box-shadow: 0 0 0 3px rgba(255, 77, 0, 0.12);
     }
     .name-row {
       display: grid;
@@ -338,24 +358,24 @@
       width: 28px;
       height: 28px;
       border-radius: 8px;
-      border: 2px solid rgba(35, 35, 35, 0.25);
+      border: 2px solid rgba(60, 55, 50, 0.28);
       display: flex;
       align-items: center;
       justify-content: center;
       font-size: 1rem;
       line-height: 1;
-      color: #fcfcfa;
+      color: #fff;
       background: transparent;
       margin-top: 1px;
     }
     .consent-toggle.on {
-      border-color: rgba(94, 112, 52, 0.4);
+      border-color: rgba(255, 77, 0, 0.4);
       color: var(--fg);
-      background: var(--ok-soft);
+      background: var(--accent-soft);
     }
     .consent-toggle.on .check {
-      background: var(--moss);
-      border-color: var(--moss);
+      background: var(--blood);
+      border-color: var(--blood);
     }
     .consent-toggle.on .check::after {
       content: '✓';
@@ -369,12 +389,13 @@
     }
 
     .q-text {
-      font-family: 'BC', system-ui, sans-serif;
+      font-family: 'BC', 'Gasoek One', system-ui, sans-serif;
+      text-transform: uppercase;
       font-size: clamp(1.35rem, 4.6vw, 2rem);
-      line-height: 1.15;
+      line-height: 1.1;
       letter-spacing: -0.02em;
       margin-bottom: 20px;
-      color: var(--ink);
+      color: var(--licorice);
       font-weight: 800;
     }
     .choices { display: grid; gap: 12px; }
@@ -397,9 +418,9 @@
     .choice:active { transform: scale(0.99); }
     /* Selected only — no right/wrong reveal until the end (keeps people playing) */
     .choice.selected {
-      border-color: rgba(94, 112, 52, 0.55);
-      background: var(--ok-soft);
-      box-shadow: 0 4px 16px rgba(94, 112, 52, 0.12);
+      border-color: rgba(255, 77, 0, 0.5);
+      background: var(--accent-soft);
+      box-shadow: 0 4px 16px rgba(255, 77, 0, 0.1);
     }
     .choice:disabled { cursor: default; }
 
@@ -415,8 +436,8 @@
       background: var(--glass);
     }
     .result-badge.win {
-      color: var(--ok);
-      border-color: rgba(61, 122, 74, 0.35);
+      color: var(--mint);
+      border-color: rgba(14, 158, 98, 0.4);
       background: var(--ok-soft);
     }
     .result-badge.near {
@@ -453,14 +474,14 @@
     }
     .storage-banner.show { display: block; }
 
-    /* Full staff overlay — stays dark for booth ops */
+    /* Staff overlay — licorice dark (ops only) */
     .staff-overlay {
       display: none;
       position: fixed;
       inset: 0;
       z-index: 80;
-      background: #12140f;
-      color: #f4f6ef;
+      background: #2a2622;
+      color: var(--marshmallow);
       padding:
         calc(12px + env(safe-area-inset-top))
         max(14px, env(safe-area-inset-right))
@@ -468,17 +489,18 @@
         max(14px, env(safe-area-inset-left));
       overflow-y: auto;
       -webkit-overflow-scrolling: touch;
-      --fg: #f4f6ef;
-      --mid: rgba(244, 246, 239, 0.75);
-      --dim: rgba(244, 246, 239, 0.45);
-      --line: rgba(244, 246, 239, 0.14);
+      --fg: #F7F0E6;
+      --mid: rgba(247, 240, 230, 0.75);
+      --dim: rgba(247, 240, 230, 0.45);
+      --line: rgba(247, 240, 230, 0.14);
     }
     .staff-overlay.open { display: block; }
     .staff-overlay h2 {
       font-family: 'BC', sans-serif;
       font-size: 1.4rem;
       margin-bottom: 6px;
-      color: #f4f6ef;
+      color: var(--marshmallow);
+      text-transform: uppercase;
     }
     .staff-meta {
       color: var(--dim);
