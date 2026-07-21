@@ -780,13 +780,13 @@
     </div>
 
     <div class="staff-section">
-      <h3>Cloud backup</h3>
+      <h3>Cloud backup (Google Sheet)</h3>
       <p class="muted" style="margin-bottom: 10px;">
-        Every play saves on this iPad <strong>and</strong> posts to cloud when online
-        (email inbox + optional Google Sheet webhook). Offline plays queue until Sync.
+        Plays always save on this iPad. When online, they also POST to your Sheet webhook.
+        Offline plays queue until you hit Sync.
       </p>
       <label class="field">
-        <span>Extra webhook (Google Sheet Apps Script — optional)</span>
+        <span>Sheet webhook URL</span>
         <input type="url" id="staffWebhook" placeholder="https://script.google.com/macros/s/…/exec" />
       </label>
       <div class="staff-actions">
@@ -817,10 +817,8 @@
       var SETTINGS_KEY = 'urge_quiz_settings_v1';
       var QUESTIONS_PER_ROUND = 10;
 
-      // Cloud sinks (in addition to iPad localStorage).
-      // FormSubmit: first play ever emails a confirm link to this address — click once, then leads flow.
-      var CLOUD_EMAIL = 'omar@tasteurge.com';
-      // Optional extra webhook (Google Apps Script sheet) — also settable in Staff panel
+      // Google Sheet Apps Script webhook (set here and/or in Staff panel).
+      // No third-party form services. Paste your /exec URL after deploying sheet-webhook.gs
       var DEFAULT_WEBHOOK = '';
 
       /**
@@ -1236,75 +1234,30 @@
         return fetch(url, opts).finally(function () { clearTimeout(t); });
       }
 
-      /** Post lead to FormSubmit → email inbox (cloud copy you can always open) */
-      function postToEmail(lead) {
-        if (!CLOUD_EMAIL || !navigator.onLine) return Promise.resolve(false);
-        var payload = {
-          _subject: 'Urge Quiz lead' + (lead.winner || lead.perfect ? ' · WINNER' : ''),
-          _template: 'table',
-          _captcha: 'false',
-          name: [lead.firstName, lead.lastName].filter(Boolean).join(' ') || 'Player',
-          email: lead.email || '',
-          firstName: lead.firstName || '',
-          lastName: lead.lastName || '',
-          birthday: lead.birthday || '',
-          score: String(lead.score != null ? lead.score : '') + '/' + String(lead.total != null ? lead.total : ''),
-          perfect: lead.perfect ? 'yes' : 'no',
-          winner: lead.winner || lead.perfect ? 'yes' : 'no',
-          event: lead.event || '',
-          createdAt: lead.createdAt || '',
-          id: lead.id || '',
-          source: 'tasteurge-quiz-kiosk'
-        };
-        return fetchWithTimeout('https://formsubmit.co/ajax/' + encodeURIComponent(CLOUD_EMAIL), {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
-          body: JSON.stringify(payload)
-        }, 9000).then(function (res) {
-          return res.ok || res.status === 200;
-        }).catch(function () { return false; });
+      function getWebhookUrl() {
+        return (settings.webhookUrl || DEFAULT_WEBHOOK || '').trim();
       }
 
-      /** Optional Google Apps Script / custom webhook */
-      function postToWebhook(lead) {
-        var url = (settings.webhookUrl || DEFAULT_WEBHOOK || '').trim();
-        if (!url || !navigator.onLine) return Promise.resolve(false);
-        // Apps Script often needs text/plain + no-cors
+      /** Google Apps Script / Sheet webhook only — no third-party form services */
+      function trySyncLead(lead) {
+        var url = getWebhookUrl();
+        if (!url || !navigator.onLine) {
+          refreshStaffStats();
+          return Promise.resolve(false);
+        }
         return fetchWithTimeout(url, {
           method: 'POST',
           mode: 'no-cors',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify(lead)
         }, 9000).then(function () {
-          // no-cors: opaque response — treat as sent if no throw
+          updateLead(lead.id, {
+            synced: true,
+            syncedAt: new Date().toISOString(),
+            syncedWebhook: true
+          });
+          refreshStaffStats();
           return true;
-        }).catch(function () { return false; });
-      }
-
-      function trySyncLead(lead) {
-        if (!navigator.onLine) {
-          refreshStaffStats();
-          return Promise.resolve(false);
-        }
-        // Run email + webhook in parallel; success if either works
-        return Promise.all([
-          postToEmail(lead),
-          postToWebhook(lead)
-        ]).then(function (results) {
-          var ok = !!(results[0] || results[1]);
-          if (ok) {
-            updateLead(lead.id, {
-              synced: true,
-              syncedAt: new Date().toISOString(),
-              syncedEmail: !!results[0],
-              syncedWebhook: !!results[1]
-            });
-          }
-          refreshStaffStats();
-          return ok;
         }).catch(function () {
           refreshStaffStats();
           return false;
@@ -1312,17 +1265,22 @@
       }
 
       function syncAllPending() {
+        var url = getWebhookUrl();
+        if (!url) {
+          setText('syncStatus', 'Sync: no Sheet webhook — Export CSV until you add one');
+          return Promise.resolve();
+        }
         if (!navigator.onLine) {
           setText('syncStatus', 'Sync: offline — will retry when online');
           return Promise.resolve();
         }
         var pending = loadLeads().filter(function (l) { return l && !l.synced; });
         if (!pending.length) {
-          setText('syncStatus', 'Sync: all caught up · cloud email → ' + CLOUD_EMAIL);
+          setText('syncStatus', 'Sync: all caught up · Sheet webhook ready');
           refreshStaffStats();
           return Promise.resolve();
         }
-        setText('syncStatus', 'Sync: sending ' + pending.length + ' to cloud…');
+        setText('syncStatus', 'Sync: sending ' + pending.length + ' to Sheet…');
         var chain = Promise.resolve();
         var okCount = 0;
         pending.forEach(function (lead) {

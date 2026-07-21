@@ -1,16 +1,14 @@
 /**
- * Urge Quiz → Google Sheet backup
+ * Urge Quiz → Google Sheet
  *
- * Setup (5 min):
- * 1. Create a Google Sheet, name tab "Leads"
- * 2. Extensions → Apps Script → paste this file
+ * 1. New Google Sheet, rename tab to "Leads"
+ * 2. Extensions → Apps Script → paste this whole file → Save
  * 3. Deploy → New deployment → Type: Web app
- *    - Execute as: Me
- *    - Who has access: Anyone
- * 4. Copy the Web App URL
- * 5. On the iPad quiz: long-press URGE → Staff → paste Webhook URL → Save webhook
- *
- * First row headers are created automatically.
+ *    Execute as: Me
+ *    Who has access: Anyone
+ * 4. Copy the Web App URL (ends in /exec)
+ * 5. iPad quiz → long-press logo → Staff → paste URL → Save webhook
+ * 6. Play one test → row should appear in the Sheet
  */
 
 var SHEET_NAME = 'Leads';
@@ -52,6 +50,6 @@ function doPost(e) {
 
 function doGet() {
   return ContentService
-    .createTextOutput('Urge quiz webhook is live. POST JSON leads here.')
+    .createTextOutput('Urge quiz Sheet webhook is live. POST JSON leads here.')
     .setMimeType(ContentService.MimeType.TEXT);
 }
