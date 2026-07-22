@@ -1,33 +1,43 @@
 Urge Quiz on tasteurge.com (Shopify)
 
-Theme files added (local theme folder):
+Live URL:
+  https://tasteurge.com/pages/quiz
+
+Lead pipeline (quiz → Shopify waitlist + Sheet):
+  See LEADS-PIPELINE.md in this repo (source of truth for future AIs).
+
+Theme files (local):
   /Users/omar/tasteurge-theme/layout/quiz.liquid
   /Users/omar/tasteurge-theme/templates/page.quiz.liquid
   /Users/omar/tasteurge-theme/assets/urge-quiz-*
 
-Deploy (run in your terminal — needs interactive Shopify login):
+Store: 1rfgq1-eb.myshopify.com (tasteurge.com)
+Live theme: Ritual #135106986055
+
+Deploy:
   cd /Users/omar/tasteurge-theme
-  shopify theme push --store tasteurge.myshopify.com --nodelete \
+  shopify theme push --store 1rfgq1-eb.myshopify.com --theme 135106986055 \
+    --allow-live --nodelete \
     --only templates/page.quiz.liquid \
     --only layout/quiz.liquid \
     --only "assets/urge-quiz-*"
 
-  Or push entire theme, or use Shopify Admin → Online Store → Themes → Edit code
-  and upload the same files.
+  Or Admin API asset PUT with a token that has write_themes
+  (GCP secret URGE_SHOPIFY_ACCESS_TOKEN often works for themes).
 
-Create the page:
-  1. Admin → Online Store → Pages → Add page
-  2. Title: Quiz (or "Win a free year")
-  3. Visibility: Visible
-  4. Theme template: quiz
-  5. Save
-
-URL will be:
-  https://tasteurge.com/pages/quiz
-  (handle "quiz" = handle)
+Page setup:
+  Admin → Online Store → Pages → Quiz
+  Template: quiz
+  Handle: quiz → https://tasteurge.com/pages/quiz
 
 iPad: open that URL → Add to Home Screen
 (Note: leads are stored per-origin; new domain = fresh localStorage)
 
-GitHub Pages remains as backup:
-  https://kinnectclub.github.io/urge-quiz-kiosk/
+On finish, each lead is dual-written to:
+  1) Shopify /contact waitlist (same as homepage)
+  2) Cloud Function Admin upsert (urge-quiz-sync)
+  3) Google Sheet via Apps Script webhook
+
+GitHub:
+  https://github.com/KINNECTCLUB/urge-quiz-kiosk
+  Pages backup: https://kinnectclub.github.io/urge-quiz-kiosk/
